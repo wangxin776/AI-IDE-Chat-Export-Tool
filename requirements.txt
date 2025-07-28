@@ -1,2 +1,6 @@
 flask>=2.0.0
-flask-cors>=3.0.10 
+flask-cors>=3.0.10
+# 批量下载功能依赖
+# zipfile 是Python标准库，无需额外安装
+# threading 是Python标准库，无需额外安装
+# concurrent.futures 是Python标准库，无需额外安装

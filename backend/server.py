@@ -25,6 +25,9 @@ from augment_extractor import AugmentDataExtractor
 from config_manager import ConfigManager
 from path_validator import PathValidator
 
+# Import batch download manager
+from batch_download_manager import batch_download_manager
+
 # Configure logging
 logging.basicConfig(level=logging.INFO,
                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -1504,6 +1507,183 @@ def reset_settings():
     except Exception as e:
         logger.error(f"重置配置设置时出错: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
+
+################################################################################
+# Batch Download API Endpoints
+################################################################################
+
+@app.route('/api/chats/batch-export', methods=['POST'])
+def batch_export_chats():
+    """
+    创建批量导出任务
+
+    请求体：{
+        "session_ids": ["id1", "id2", ...],
+        "format": "html|json|markdown",
+        "source": "cursor|augment|cursor-augment|idea-augment|pycharm-augment"
+    }
+
+    响应：{
+        "task_id": "uuid",
+        "status": "pending",
+        "message": "任务创建成功"
+    }
+    """
+    try:
+        logger.info(f"收到批量导出请求，来自 {request.remote_addr}")
+
+        # 获取请求数据
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "请求数据为空"}), 400
+
+        session_ids = data.get('session_ids', [])
+        format_type = data.get('format', 'html').lower()
+        source = data.get('source', 'cursor').lower()
+
+        # 验证参数
+        if not session_ids:
+            return jsonify({"error": "会话ID列表不能为空"}), 400
+
+        if not isinstance(session_ids, list):
+            return jsonify({"error": "会话ID必须是列表格式"}), 400
+
+        if len(session_ids) > 100:  # 限制最大数量
+            return jsonify({"error": "单次最多只能导出100个会话"}), 400
+
+        if format_type not in ['html', 'json', 'markdown']:
+            return jsonify({"error": f"不支持的格式类型: {format_type}"}), 400
+
+        if source not in ['cursor', 'augment', 'cursor-augment', 'idea-augment', 'pycharm-augment']:
+            return jsonify({"error": f"不支持的数据源: {source}"}), 400
+
+        # 创建批量下载任务
+        task_id = batch_download_manager.create_batch_task(session_ids, format_type, source)
+
+        logger.info(f"批量导出任务创建成功: {task_id}, 会话数: {len(session_ids)}, 格式: {format_type}, 数据源: {source}")
+
+        return jsonify({
+            "task_id": task_id,
+            "status": "pending",
+            "message": "任务创建成功",
+            "session_count": len(session_ids)
+        })
+
+    except ValueError as e:
+        logger.warning(f"批量导出参数错误: {e}")
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        logger.error(f"创建批量导出任务失败: {e}", exc_info=True)
+        return jsonify({"error": "服务器内部错误"}), 500
+
+@app.route('/api/batch-download/<task_id>/status', methods=['GET'])
+def get_batch_download_status(task_id):
+    """
+    获取批量下载任务状态
+
+    响应：{
+        "task_id": "uuid",
+        "status": "pending|processing|completed|failed|cancelled",
+        "progress": 0.75,
+        "completed_count": 8,
+        "total_count": 10,
+        "created_at": "2024-01-01T12:00:00",
+        "started_at": "2024-01-01T12:00:01",
+        "completed_at": "2024-01-01T12:00:30",
+        "error_message": null,
+        "failed_sessions": [],
+        "download_url": "/api/batch-download/uuid/file"
+    }
+    """
+    try:
+        logger.debug(f"查询批量下载状态: {task_id}")
+
+        # 获取任务状态
+        status_info = batch_download_manager.get_task_status(task_id)
+
+        if not status_info:
+            return jsonify({"error": "任务不存在"}), 404
+
+        # 如果任务已完成，添加下载URL
+        if status_info['status'] == 'completed':
+            status_info['download_url'] = f"/api/batch-download/{task_id}/file"
+
+        return jsonify(status_info)
+
+    except Exception as e:
+        logger.error(f"获取批量下载状态失败: {e}", exc_info=True)
+        return jsonify({"error": "服务器内部错误"}), 500
+
+@app.route('/api/batch-download/<task_id>/cancel', methods=['POST'])
+def cancel_batch_download(task_id):
+    """
+    取消批量下载任务
+
+    响应：{
+        "success": true,
+        "message": "任务已取消"
+    }
+    """
+    try:
+        logger.info(f"取消批量下载任务: {task_id}")
+
+        success = batch_download_manager.cancel_task(task_id)
+
+        if success:
+            return jsonify({
+                "success": True,
+                "message": "任务已取消"
+            })
+        else:
+            return jsonify({
+                "success": False,
+                "message": "任务不存在或无法取消"
+            }), 400
+
+    except Exception as e:
+        logger.error(f"取消批量下载任务失败: {e}", exc_info=True)
+        return jsonify({"error": "服务器内部错误"}), 500
+
+@app.route('/api/batch-download/<task_id>/file', methods=['GET'])
+def download_batch_file(task_id):
+    """
+    下载批量导出的文件
+
+    响应：ZIP文件流
+    """
+    try:
+        logger.info(f"下载批量导出文件: {task_id}")
+
+        # 获取文件路径
+        file_path = batch_download_manager.get_task_file_path(task_id)
+
+        if not file_path:
+            return jsonify({"error": "文件不存在或任务未完成"}), 404
+
+        if not os.path.exists(file_path):
+            return jsonify({"error": "文件已被清理或不存在"}), 404
+
+        # 获取任务信息用于生成文件名
+        task_info = batch_download_manager.get_task_status(task_id)
+        if task_info:
+            format_type = task_info.get('format_type', 'unknown')
+            source = task_info.get('source', 'unknown')
+            filename = f"ai_ide_batch_export_{source}_{format_type}_{task_id[:8]}.zip"
+        else:
+            filename = f"ai_ide_batch_export_{task_id[:8]}.zip"
+
+        # 返回文件
+        return send_from_directory(
+            directory=os.path.dirname(file_path),
+            path=os.path.basename(file_path),
+            as_attachment=True,
+            download_name=filename,
+            mimetype='application/zip'
+        )
+
+    except Exception as e:
+        logger.error(f"下载批量导出文件失败: {e}", exc_info=True)
+        return jsonify({"error": "服务器内部错误"}), 500
 
 # Serve React app
 @app.route('/', defaults={'path': ''})

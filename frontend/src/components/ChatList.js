@@ -42,7 +42,11 @@ import SearchIcon from "@mui/icons-material/Search";
 import ClearIcon from "@mui/icons-material/Clear";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
 import WarningIcon from "@mui/icons-material/Warning";
+import CheckBoxOutlineBlankIcon from "@mui/icons-material/CheckBoxOutlineBlank";
+import CheckBoxIcon from "@mui/icons-material/CheckBox";
+import SelectAllIcon from "@mui/icons-material/SelectAll";
 import { colors } from "../App";
+import BatchDownloadManager from "./BatchDownloadManager";
 
 const ChatList = ({
   dataSource,
@@ -59,6 +63,10 @@ const ChatList = ({
   const [exportFormat, setExportFormat] = useState("html");
   const [dontShowExportWarning, setDontShowExportWarning] = useState(false);
   const [currentExportSession, setCurrentExportSession] = useState(null);
+
+  // 批量选择相关状态
+  const [batchMode, setBatchMode] = useState(false);
+  const [selectedChats, setSelectedChats] = useState(new Set());
 
   const fetchChats = async (
     source = dataSource,
@@ -198,6 +206,42 @@ const ChatList = ({
   // Handle search input change
   const handleSearchChange = (event) => {
     setSearchQuery(event.target.value);
+  };
+
+  // 批量选择相关函数
+  const toggleBatchMode = () => {
+    setBatchMode(!batchMode);
+    setSelectedChats(new Set()); // 切换模式时清空选择
+  };
+
+  const handleChatSelection = (sessionId, event) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    setSelectedChats(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(sessionId)) {
+        newSet.delete(sessionId);
+      } else {
+        newSet.add(sessionId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSelectAll = () => {
+    const allSessionIds = chats.map(chat => chat.session_id).filter(Boolean);
+    setSelectedChats(prev => {
+      if (prev.size === allSessionIds.length) {
+        return new Set(); // 全部取消选择
+      } else {
+        return new Set(allSessionIds); // 全部选择
+      }
+    });
+  };
+
+  const clearSelection = () => {
+    setSelectedChats(new Set());
   };
 
   // Handle format dialog selection
@@ -385,6 +429,24 @@ const ChatList = ({
         </Typography>
         <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
           <Button
+            variant={batchMode ? "contained" : "outlined"}
+            startIcon={batchMode ? <CheckBoxIcon /> : <CheckBoxOutlineBlankIcon />}
+            onClick={toggleBatchMode}
+            sx={{
+              color: batchMode ? "white" : colors.highlightColor,
+              borderColor: alpha(colors.highlightColor, 0.5),
+              backgroundColor: batchMode ? colors.highlightColor : "transparent",
+              "&:hover": {
+                borderColor: colors.highlightColor,
+                backgroundColor: batchMode
+                  ? alpha(colors.highlightColor, 0.8)
+                  : alpha(colors.highlightColor, 0.1),
+              },
+            }}
+          >
+            {batchMode ? "退出批量模式" : "批量选择"}
+          </Button>
+          <Button
             variant="outlined"
             startIcon={<RefreshIcon />}
             onClick={fetchChats}
@@ -530,6 +592,63 @@ const ChatList = ({
           sx: { borderRadius: 2 },
         }}
       />
+
+      {/* 批量操作工具栏 */}
+      {batchMode && (
+        <Paper
+          sx={{
+            p: 2,
+            mb: 3,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            backgroundColor: alpha(colors.highlightColor, 0.05),
+            border: `1px solid ${alpha(colors.highlightColor, 0.2)}`,
+            borderRadius: 2,
+          }}
+        >
+          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+            <Typography variant="body1" sx={{ fontWeight: 600 }}>
+              已选择 {selectedChats.size} 个对话
+            </Typography>
+            {selectedChats.size > 0 && (
+              <Button
+                size="small"
+                onClick={clearSelection}
+                sx={{ color: colors.text.secondary }}
+              >
+                清空选择
+              </Button>
+            )}
+          </Box>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<SelectAllIcon />}
+              onClick={handleSelectAll}
+              sx={{
+                borderColor: alpha(colors.highlightColor, 0.5),
+                color: colors.highlightColor,
+                "&:hover": {
+                  borderColor: colors.highlightColor,
+                  backgroundColor: alpha(colors.highlightColor, 0.1),
+                },
+              }}
+            >
+              {selectedChats.size === chats.length ? "取消全选" : "全选"}
+            </Button>
+            {selectedChats.size > 0 && (
+              <BatchDownloadManager
+                selectedSessions={selectedChats}
+                dataSource={dataSource}
+                onSelectionChange={setSelectedChats}
+                disabled={loading}
+              />
+            )}
+          </Box>
+        </Paper>
+      )}
 
       {Object.keys(chatsByProject).length === 0 ? (
         <Paper
@@ -718,8 +837,8 @@ const ChatList = ({
                         key={chat.session_id || `chat-${index}`}
                       >
                         <Card
-                          component={Link}
-                          to={`/chat/${chat.session_id}`}
+                          component={batchMode ? "div" : Link}
+                          to={batchMode ? undefined : `/chat/${chat.session_id}`}
                           sx={{
                             height: "100%",
                             display: "flex",
@@ -728,15 +847,49 @@ const ChatList = ({
                               "all 0.3s cubic-bezier(.17,.67,.83,.67)",
                             textDecoration: "none",
                             borderTop: "1px solid",
-                            borderColor: alpha(colors.text.secondary, 0.1),
+                            borderColor: selectedChats.has(chat.session_id)
+                              ? colors.highlightColor
+                              : alpha(colors.text.secondary, 0.1),
+                            border: selectedChats.has(chat.session_id)
+                              ? `2px solid ${colors.highlightColor}`
+                              : undefined,
+                            backgroundColor: selectedChats.has(chat.session_id)
+                              ? alpha(colors.highlightColor, 0.05)
+                              : undefined,
+                            cursor: batchMode ? "pointer" : undefined,
                             "&:hover": {
-                              transform: "translateY(-8px)",
-                              boxShadow:
-                                "0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)",
+                              transform: batchMode ? "none" : "translateY(-8px)",
+                              boxShadow: batchMode
+                                ? "0 4px 12px rgba(0,0,0,0.1)"
+                                : "0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)",
                             },
                           }}
+                          onClick={batchMode ? (e) => handleChatSelection(chat.session_id, e) : undefined}
                         >
                           <CardContent>
+                            {/* 批量选择复选框 */}
+                            {batchMode && (
+                              <Box
+                                sx={{
+                                  display: "flex",
+                                  justifyContent: "flex-end",
+                                  mb: 1,
+                                }}
+                              >
+                                <Checkbox
+                                  checked={selectedChats.has(chat.session_id)}
+                                  onChange={(e) => handleChatSelection(chat.session_id, e)}
+                                  sx={{
+                                    color: colors.highlightColor,
+                                    "&.Mui-checked": {
+                                      color: colors.highlightColor,
+                                    },
+                                  }}
+                                  onClick={(e) => e.stopPropagation()}
+                                />
+                              </Box>
+                            )}
+
                             <Box
                               sx={{
                                 display: "flex",
@@ -845,15 +998,16 @@ const ChatList = ({
                               )}
                           </CardContent>
                           <CardActions sx={{ mt: "auto", pt: 0 }}>
-                            <Tooltip title="Export Chat (Warning: Check for sensitive data)">
-                              <IconButton
-                                size="small"
-                                onClick={(e) =>
-                                  handleExport(e, chat.session_id)
-                                }
-                                sx={{
-                                  ml: "auto",
-                                  position: "relative",
+                            {!batchMode && (
+                              <Tooltip title="Export Chat (Warning: Check for sensitive data)">
+                                <IconButton
+                                  size="small"
+                                  onClick={(e) =>
+                                    handleExport(e, chat.session_id)
+                                  }
+                                  sx={{
+                                    ml: "auto",
+                                    position: "relative",
                                   "&::after": dontShowExportWarning
                                     ? null
                                     : {
@@ -871,6 +1025,7 @@ const ChatList = ({
                                 <FileDownloadIcon fontSize="small" />
                               </IconButton>
                             </Tooltip>
+                            )}
                           </CardActions>
                         </Card>
                       </Grid>

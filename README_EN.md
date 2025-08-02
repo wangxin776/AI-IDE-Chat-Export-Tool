@@ -11,6 +11,8 @@ This project is a web application specifically designed for viewing, managing, a
 - **Multi-Data Source Support**: Unified management of conversation records from 5 different AI assistants
 - **Modern Interface**: Dark theme design based on Material-UI, providing excellent user experience
 - **Powerful Export Functions**: Supports export in HTML, JSON, and Markdown formats
+- **Batch Download Feature**: Support for selecting multiple conversations for batch export, automatically packaged as ZIP files
+- **Real-time Progress Monitoring**: Real-time progress display, status tracking, and cancellation operations during batch downloads
 - **Intelligent Data Extraction**: Automatically parses and converts chat data in different formats
 - **Project Recognition**: Intelligently identifies and displays project information associated with conversations
 - **Settings Management**: Visual settings page with custom data source path configuration
@@ -25,12 +27,15 @@ This project is a web application specifically designed for viewing, managing, a
 - **React Router** - Single-page application routing management
 - **Axios** - HTTP client library
 - **React Markdown** - Markdown content rendering
+- **React Hooks** - State management and side effect handling (batch download functionality)
 
 ### Backend Technologies
 
 - **Flask** - Lightweight Python web framework
 - **SQLite** - Database operations and queries
 - **Flask-CORS** - Cross-Origin Resource Sharing support
+- **Threading** - Multi-threaded concurrent processing (batch download tasks)
+- **ZipFile** - ZIP file compression and packaging functionality
 
 ## 📊 Supported Data Sources
 
@@ -129,11 +134,37 @@ python server.py
 2. Click on any conversation to enter the detailed view page
 3. Supports filtering by project, time, and other information
 
-### Export Functions
+### Single Export Functions
 
 1. Click the export button on the conversation details page
 2. Select export format: HTML, JSON, or Markdown
 3. The system will generate a file containing the complete conversation content for download
+
+### Batch Download Feature
+
+1. **Enter Batch Mode**: Click the "Batch Select" button on the chat list page
+2. **Select Conversations**:
+   - Use checkboxes to select conversations for download
+   - Use the "Select All" button to quickly select all conversations
+   - Selected conversations will be highlighted with a border
+3. **Start Batch Download**:
+   - Click the "Batch Download" button (shows the number of selected conversations)
+   - Select export format in the popup dialog (HTML, JSON, or Markdown)
+   - Click "Start Download" to confirm the operation
+4. **Monitor Download Progress**:
+   - View real-time progress bar and completion status
+   - Display completed count, failed count, and estimated remaining time
+   - Support canceling ongoing download tasks at any time
+5. **Download File**:
+   - Click the "Download File" button after task completion
+   - The system will automatically download a ZIP archive containing all conversations
+   - ZIP file is organized by format with detailed metadata information
+
+**Batch Download Features**:
+- Supports downloading up to 100 conversations simultaneously
+- Intelligent error handling: partial failures don't affect other conversation exports
+- Automatic file naming: includes data source, format, and task ID information
+- Progress persistence: task status can be viewed after page refresh
 
 ### Settings Configuration
 
@@ -163,6 +194,15 @@ python server.py
 - Comprehensive error handling and exception recovery
 - Unified processing for multiple data source formats
 
+### Efficient Batch Processing
+
+- **Concurrent Downloads**: Multi-threaded parallel processing with up to 5 concurrent worker threads
+- **Smart Packaging**: Automatic ZIP compression with streaming processing for large files to avoid memory overflow
+- **Real-time Monitoring**: 2-second polling interval providing precise progress tracking and status updates
+- **Fault Tolerance**: Partial failures don't affect overall tasks, with detailed failure reason logging
+- **Resource Management**: Automatic temporary file cleanup with task cancellation and resource recovery support
+- **User Experience**: Friendly progress interface with remaining time estimation and operation guidance
+
 ### Advanced Configuration Management
 
 - Visual settings interface with custom path configuration support
@@ -178,12 +218,14 @@ This project is based on [cursor-view](https://github.com/saharmor/cursor-view) 
 
 1. **Multi-Data Source Support**: Extended from single Cursor data source to five data sources
 2. **Unified Export Functions**: Supports standardized export in multiple formats
-3. **Modern Interface**: Brand new Material-UI design and dark theme
-4. **Intelligent Data Extraction**: More powerful data parsing and conversion capabilities
-5. **Optimized Project Recognition**: More accurate project name recognition algorithms
-6. **Enhanced Error Handling**: More comprehensive exception handling and user feedback
-7. **Settings Management System**: Visual configuration interface and path management
-8. **JetBrains IDE Support**: Added IDEA and PyCharm Augment data source support
+3. **Batch Download System**: Brand new batch selection and download functionality with multi-threaded concurrent processing
+4. **Real-time Progress Monitoring**: Complete task status tracking, progress display, and error handling mechanisms
+5. **Modern Interface**: Brand new Material-UI design and dark theme
+6. **Intelligent Data Extraction**: More powerful data parsing and conversion capabilities
+7. **Optimized Project Recognition**: More accurate project name recognition algorithms
+8. **Enhanced Error Handling**: More comprehensive exception handling and user feedback
+9. **Settings Management System**: Visual configuration interface and path management
+10. **JetBrains IDE Support**: Added IDEA and PyCharm Augment data source support
 
 ### Acknowledgments
 
@@ -197,17 +239,25 @@ cursor-view/
 │   ├── src/
 │   │   ├── components/      # React components
 │   │   │   ├── ChatDetail.js      # Chat detail page
-│   │   │   ├── ChatList.js        # Chat list page
+│   │   │   ├── ChatList.js        # Chat list page (with batch selection)
+│   │   │   ├── BatchDownloadManager.js # Batch download manager component
+│   │   │   ├── ProgressDialog.js  # Progress display dialog
 │   │   │   ├── Header.js          # Page header component
 │   │   │   ├── PathConfigCard.js  # Path configuration card
 │   │   │   └── SettingsPage.js    # Settings page
+│   │   ├── hooks/           # Custom hooks
+│   │   │   └── useBatchDownload.js # Batch download hook
+│   │   ├── utils/           # Utility functions
+│   │   │   └── downloadUtils.js   # Download utility functions
 │   │   ├── constants/       # Configuration constants
 │   │   │   └── dataSourceConfig.js # Data source configuration
 │   │   └── ...
 │   ├── build/               # Build output directory
 │   └── package.json
 ├── backend/                 # Python backend service
-│   ├── server.py           # Flask main server
+│   ├── server.py           # Flask main server (with batch download APIs)
+│   ├── batch_download_manager.py  # Batch download manager
+│   ├── file_packager.py    # File packager
 │   ├── config_manager.py   # Configuration manager
 │   ├── path_validator.py   # Path validator
 │   ├── augment_extractor.py # Augment data extractor

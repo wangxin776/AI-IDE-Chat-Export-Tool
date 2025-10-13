@@ -97,8 +97,8 @@ npm run build
 4. **安装后端依赖**
 
 ```bash
-cd ../backend
-pip install -r ../requirements.txt
+cd ..
+pip install -r requirements.txt
 ```
 
 ### 启动应用

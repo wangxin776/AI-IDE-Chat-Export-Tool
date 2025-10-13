@@ -78,7 +78,7 @@
 
 ```bash
 git clone <repository-url>
-cd cursor-view
+cd AI-IDE-Chat-Export-Tool
 ```
 
 2. **安装前端依赖**

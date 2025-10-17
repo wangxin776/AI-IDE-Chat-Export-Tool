@@ -34,6 +34,12 @@ export const DATA_SOURCE_CONFIG = {
     appTitle: "AI IDE Chat Export Tool",
     description: "JetBrains PyCharm中的Augment插件对话",
   },
+  warp: {
+    displayName: "Warp Terminal",
+    historyTitle: "Warp AI Chat History",
+    appTitle: "AI IDE Chat Export Tool",
+    description: "Warp Terminal中的AI助手对话",
+  },
 };
 
 /**

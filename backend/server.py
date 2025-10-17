@@ -546,6 +546,40 @@ def extract_pycharm_augment_chats(custom_path: Optional[str] = None) -> list[Dic
         logger.error(f"提取PyCharm Augment对话失败: {e}")
         return []
 
+def extract_warp_chats(custom_path: Optional[str] = None) -> list[Dict[str,Any]]:
+    """
+    提取Warp Terminal中的AI对话数据并转换为cursor-view兼容格式
+
+    Args:
+        custom_path: 自定义路径，如果为None则使用默认路径
+
+    Returns:
+        cursor-view格式的Warp对话列表
+    """
+    try:
+        logger.info("开始提取Warp AI对话数据...")
+
+        # 创建Warp数据提取器，传入自定义路径
+        from warp_extractor import WarpDataExtractor
+        extractor = WarpDataExtractor(custom_path)
+
+        # 提取Warp对话
+        conversations = extractor.extract_warp_conversations()
+
+        if not conversations:
+            logger.warning("未找到Warp对话数据")
+            return []
+
+        # 转换为cursor-view兼容格式
+        cursor_format_chats = extractor.convert_to_cursor_view_format(conversations)
+
+        logger.info(f"成功提取并转换 {len(cursor_format_chats)} 个Warp对话")
+        return cursor_format_chats
+
+    except Exception as e:
+        logger.error(f"提取Warp对话失败: {e}")
+        return []
+
 ################################################################################
 # Extraction pipeline
 ################################################################################
@@ -579,6 +613,10 @@ def extract_chats(source: str = 'cursor') -> list[Dict[str,Any]]:
     # 如果是PyCharm Augment数据源，使用PyCharm Augment提取器
     elif source == 'pycharm-augment':
         return extract_pycharm_augment_chats(custom_path)
+    
+    # 如果是Warp数据源，使用Warp提取器
+    elif source == 'warp':
+        return extract_warp_chats(custom_path)
 
     # 默认使用Cursor数据源
     if custom_path:

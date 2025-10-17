@@ -8,7 +8,7 @@
 
 ### 主要功能
 
-- **多数据源支持**：统一管理来自 5 种不同 AI 助手的对话记录
+- **多数据源支持**：统一管理来自 6 种不同 AI 助手的对话记录
 - **现代化界面**：基于 Material-UI 的深色主题设计，提供优秀的用户体验
 - **强大的导出功能**：支持 HTML、JSON、Markdown 三种格式的导出
 - **批量下载功能**：支持一次性选择多个对话进行批量导出，自动打包为ZIP文件
@@ -69,6 +69,12 @@
 - **数据位置**：PyCharm 的配置目录中的 XML 格式数据
 - **特点**：专门针对 Python 开发的代码辅助对话
 
+### 6. Warp Terminal AI 对话
+
+- **来源**：Warp Terminal 的内置 AI 助手功能
+- **数据位置**：Warp 的 SQLite 数据库 (macOS: `~/Library/Group Containers/2BBY89MBSN.dev.warp/...`)
+- **特点**：支持终端环境下的 AI 对话，包含工作目录和上下文信息
+
 ## 🚀 安装和启动
 
 ### 环境要求
@@ -126,7 +132,7 @@ python server.py
 
 1. 在页面顶部的数据源选择器中选择要查看的数据源
 2. 系统会自动加载对应数据源的聊天记录
-3. 支持在 5 种数据源之间无缝切换（Cursor、VSCode Augment、Cursor Augment、IDEA Augment、PyCharm Augment）
+3. 支持在 6 种数据源之间无缝切换（Cursor、VSCode Augment、Cursor Augment、IDEA Augment、PyCharm Augment、Warp Terminal）
 
 ### 查看对话
 
